@@ -87,37 +87,41 @@ export default function Sidebar({
 
       <div className="nav-label">Editor</div>
 
-      {items.map(item => (
-        <button
-          key={item.id}
-          type="button"
-          className={`nav-item ${tab === item.id ? "active" : ""}`}
-          onClick={() => setTab(item.id)}
-        >
-          <span className="nav-icon">{item.icon}</span>
-          <span>{item.label}</span>
-        </button>
-      ))}
+      <div className="nav-items-grid">
+        {items.map(item => (
+          <button
+            key={item.id}
+            type="button"
+            className={`nav-item ${tab === item.id ? "active" : ""}`}
+            onClick={() => setTab(item.id)}
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="sidebar-divider" />
 
       <div className="nav-label">Export</div>
 
-      <button type="button" className="export-btn secondary" onClick={onImportPdf}>
-        📄 Import Into Current
-      </button>
+      <div className="sidebar-actions-grid">
+        <button type="button" className="export-btn secondary" onClick={onImportPdf}>
+          📄 Import Into Current
+        </button>
 
-      <button type="button" className="export-btn secondary" onClick={onImportPdfAsNew}>
-        🗂 Import As New
-      </button>
+        <button type="button" className="export-btn secondary" onClick={onImportPdfAsNew}>
+          🗂 Import As New
+        </button>
 
-      <button type="button" className="export-btn primary" onClick={onExportPdf}>
-        ⬇ Export / Print PDF
-      </button>
+        <button type="button" className="export-btn primary" onClick={onExportPdf}>
+          ⬇ Export / Print PDF
+        </button>
 
-      <button type="button" className="export-btn secondary" onClick={onCopyAts}>
-        📋 Copy ATS Text
-      </button>
+        <button type="button" className="export-btn secondary" onClick={onCopyAts}>
+          📋 Copy ATS Text
+        </button>
+      </div>
 
       <p className="tip-text">
         The editor auto-saves locally. Use the PDF button to open your browser print dialog and save the
