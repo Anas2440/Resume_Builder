@@ -4,9 +4,11 @@ import {
   type Experience,
   type Project,
   type Education,
-  type Certification
+  type Certification,
+  type ResumeTargeting
 } from "../types/resume"
 import type { AtsReport } from "../utils/ats"
+import { resumeModes } from "../utils/resumeAi"
 
 interface Props {
   tab: string
@@ -20,11 +22,17 @@ interface Props {
   setEducation: React.Dispatch<React.SetStateAction<Education[]>>
   certifications: Certification[]
   setCertifications: React.Dispatch<React.SetStateAction<Certification[]>>
+  targeting: ResumeTargeting
+  setTargeting: React.Dispatch<React.SetStateAction<ResumeTargeting>>
   atsReport: AtsReport
   importMeta: {
     fileName: string
     warnings: string[]
   } | null
+  optimizationNotes: string[]
+  onOptimizeResume: () => void
+  onGenerateSummary: () => void
+  onRewriteAllBullets: () => void
 }
 
 interface SectionMeta {
@@ -38,6 +46,11 @@ const sections: SectionMeta[] = [
     id: "basics",
     title: "Personal Details",
     description: "Add your name, contact information, and profile links."
+  },
+  {
+    id: "targeting",
+    title: "AI Job Targeting",
+    description: "Paste a job description, choose a resume mode, and generate a tailored ATS-first resume."
   },
   {
     id: "objective",
@@ -90,6 +103,33 @@ function SectionHeader({ title, description }: Omit<SectionMeta, "id">) {
   )
 }
 
+function InsightList({
+  title,
+  items,
+  empty
+}: {
+  title: string
+  items: string[]
+  empty: string
+}) {
+  return (
+    <div className="insight-block">
+      <div className="insight-title">{title}</div>
+      {items.length > 0 ? (
+        <div className="keyword-chip-list">
+          {items.map(item => (
+            <span key={`${title}-${item}`} className="keyword-chip">
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="ats-empty">{empty}</p>
+      )}
+    </div>
+  )
+}
+
 export default function Editor({
   tab,
   basics,
@@ -102,10 +142,17 @@ export default function Editor({
   setEducation,
   certifications,
   setCertifications,
+  targeting,
+  setTargeting,
   atsReport,
-  importMeta
+  importMeta,
+  optimizationNotes,
+  onOptimizeResume,
+  onGenerateSummary,
+  onRewriteAllBullets
 }: Props) {
   const activeSection = sections.find(section => section.id === tab) ?? sections[0]
+  const jobAnalysis = atsReport.jobAnalysis
 
   const updateBasics = (field: keyof Basics, value: string) => {
     setBasics(prev => ({
@@ -130,6 +177,21 @@ export default function Editor({
     )
   }
 
+  const moveProject = (index: number, direction: "up" | "down") => {
+    setProjects(prev => {
+      const targetIndex = direction === "up" ? index - 1 : index + 1
+
+      if (targetIndex < 0 || targetIndex >= prev.length) {
+        return prev
+      }
+
+      const next = [...prev]
+      const [project] = next.splice(index, 1)
+      next.splice(targetIndex, 0, project)
+      return next
+    })
+  }
+
   const updateEducation = (index: number, field: keyof Education, value: string) => {
     setEducation(prev =>
       prev.map((item, itemIndex) =>
@@ -144,6 +206,16 @@ export default function Editor({
         itemIndex === index ? { ...item, [field]: value } : item
       )
     )
+  }
+
+  const updateTargeting = <Key extends keyof ResumeTargeting,>(
+    field: Key,
+    value: ResumeTargeting[Key]
+  ) => {
+    setTargeting(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
   return (
@@ -209,6 +281,125 @@ export default function Editor({
                 onChange={event => updateBasics("portfolio", event.target.value)}
                 placeholder="yourportfolio.com"
               />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === "targeting" && (
+        <section className="editor-section active">
+          <div className="mode-grid">
+            {Object.values(resumeModes).map(mode => (
+              <button
+                key={mode.id}
+                type="button"
+                className={`mode-card ${targeting.mode === mode.id ? "active" : ""}`}
+                onClick={() => updateTargeting("mode", mode.id)}
+              >
+                <span className="mode-title">{mode.label}</span>
+                <span className="mode-target">{mode.target}</span>
+                <span className="mode-tone">{mode.tone}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="row2">
+            <div className="field-group">
+              <label>Target Role</label>
+              <input
+                value={targeting.targetRole}
+                onChange={event => updateTargeting("targetRole", event.target.value)}
+                placeholder="iOS Engineer"
+              />
+            </div>
+
+            <div className="field-group">
+              <label>Company Type</label>
+              <input
+                value={targeting.companyType}
+                onChange={event => updateTargeting("companyType", event.target.value)}
+                placeholder="Product startup, enterprise team, consulting firm"
+              />
+            </div>
+          </div>
+
+          <div className="field-group">
+            <label>Paste Job Description</label>
+            <textarea
+              rows={12}
+              value={targeting.jobDescription}
+              onChange={event => updateTargeting("jobDescription", event.target.value)}
+              placeholder="Paste the full job description here. The engine will extract required skills, technologies, recruiter intent, seniority expectations, and domain emphasis."
+            />
+          </div>
+
+          <div className="optimizer-actions">
+            <button type="button" className="action-btn primary" onClick={onOptimizeResume}>
+              Optimize Resume For This JD
+            </button>
+
+            <button type="button" className="action-btn" onClick={onGenerateSummary}>
+              Generate Tailored Summary
+            </button>
+
+            <button type="button" className="action-btn" onClick={onRewriteAllBullets}>
+              Rewrite Experience Bullets
+            </button>
+          </div>
+
+          <div className="ats-callout">
+            <div className="ats-callout-title">Ethical Optimization Guardrail</div>
+            <p>
+              The optimizer can reframe, prioritize, and strengthen real experience. It does not invent
+              employers, education, certifications, projects, fake metrics, or unsupported seniority.
+            </p>
+          </div>
+
+          {optimizationNotes.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <span className="card-num">Last Optimization</span>
+              </div>
+
+              <div className="ats-list">
+                {optimizationNotes.map(note => (
+                  <div key={note} className="ats-list-item success">
+                    {note}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="insight-grid">
+            <InsightList
+              title="Required Skills"
+              items={jobAnalysis.requiredSkills}
+              empty="Paste a JD to extract required skills."
+            />
+            <InsightList
+              title="ATS Keywords"
+              items={jobAnalysis.atsKeywords}
+              empty="Keyword opportunities will appear here."
+            />
+            <InsightList
+              title="Technologies"
+              items={jobAnalysis.technologies}
+              empty="No explicit technologies detected yet."
+            />
+            <InsightList
+              title="Recruiter Intent"
+              items={jobAnalysis.recruiterIntent}
+              empty="Recruiter intent will appear here."
+            />
+            <InsightList
+              title="Domain Emphasis"
+              items={jobAnalysis.domainEmphasis}
+              empty="Domain emphasis will appear here."
+            />
+            <div className="insight-block">
+              <div className="insight-title">Seniority Expectations</div>
+              <p className="insight-copy">{jobAnalysis.seniority}</p>
             </div>
           </div>
         </section>
@@ -325,13 +516,33 @@ export default function Editor({
             <div key={`${item.name}-${index}`} className="card">
               <div className="card-header">
                 <span className="card-num">Project {index + 1}</span>
-                <button
-                  type="button"
-                  className="remove-btn"
-                  onClick={() => setProjects(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
-                >
-                  Remove
-                </button>
+                <div className="card-actions">
+                  <button
+                    type="button"
+                    className="reorder-btn"
+                    onClick={() => moveProject(index, "up")}
+                    disabled={index === 0}
+                  >
+                    Move Up
+                  </button>
+
+                  <button
+                    type="button"
+                    className="reorder-btn"
+                    onClick={() => moveProject(index, "down")}
+                    disabled={index === projects.length - 1}
+                  >
+                    Move Down
+                  </button>
+
+                  <button
+                    type="button"
+                    className="remove-btn"
+                    onClick={() => setProjects(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
 
               <div className="field-group">
@@ -519,12 +730,18 @@ export default function Editor({
         <section className="editor-section active">
           <div className="ats-hero">
             <div>
-              <div className="ats-label">ATS Readiness Score</div>
+              <div className="ats-label">Dynamic ATS Score</div>
               <div className="ats-score">{atsReport.score}<span>/100</span></div>
             </div>
 
+            <div>
+              <div className="ats-label">Recruiter Score</div>
+              <div className="ats-score recruiter">{atsReport.recruiterScore}<span>/100</span></div>
+            </div>
+
             <div className="ats-score-copy">
-              This is a local readiness estimate based on resume completeness, structure, measurable impact, and Gulf-market basics.
+              Scores update from the pasted JD, selected mode, keyword overlap, semantic fit, bullet quality,
+              formatting safety, and recruiter readability.
             </div>
           </div>
 
@@ -553,6 +770,31 @@ export default function Editor({
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="insight-grid ats-insights">
+            <InsightList
+              title="Matched Keywords"
+              items={atsReport.matchedKeywords}
+              empty="Paste a JD or add role-relevant language to create matches."
+            />
+            <InsightList
+              title="Missing Skills"
+              items={atsReport.missingSkills}
+              empty="No major missing target keywords detected."
+            />
+            <InsightList
+              title="Keyword Opportunities"
+              items={atsReport.keywordOpportunities}
+              empty="No keyword opportunities detected."
+            />
+            <div className="insight-block">
+              <div className="insight-title">6-Second Recruiter Scan</div>
+              <p className="insight-copy">{atsReport.recruiterScan.firstImpression}</p>
+              <div className="shortlist-estimate">
+                Shortlist probability estimate: {atsReport.recruiterScan.shortlistProbability}%
+              </div>
+            </div>
           </div>
 
           <div className="ats-columns">
@@ -591,6 +833,88 @@ export default function Editor({
               ) : (
                 <p className="ats-empty">No major ATS issues detected in the current draft.</p>
               )}
+            </div>
+          </div>
+
+          <div className="ats-columns">
+            <div className="card">
+              <div className="card-header">
+                <span className="card-num">Weak Bullet Detection</span>
+              </div>
+
+              {atsReport.weakBullets.length > 0 ? (
+                <div className="ats-list">
+                  {atsReport.weakBullets.map(item => (
+                    <div key={`${item.section}-${item.bullet}`} className="ats-list-item medium">
+                      <strong>{item.section}</strong>
+                      <span>{item.reason}</span>
+                      <span>{item.bullet}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="ats-empty">No weak bullets detected in the current draft.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <span className="card-num">Technical Credibility</span>
+              </div>
+
+              <div className="ats-list">
+                {atsReport.credibility.strengths.map(item => (
+                  <div key={item} className="ats-list-item success">
+                    {item}
+                  </div>
+                ))}
+
+                {atsReport.credibility.warnings.map(item => (
+                  <div key={item} className="ats-list-item medium">
+                    {item}
+                  </div>
+                ))}
+
+                {atsReport.credibility.strengths.length === 0 &&
+                  atsReport.credibility.warnings.length === 0 && (
+                    <p className="ats-empty">No credibility warnings detected.</p>
+                  )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ats-columns">
+            <div className="card">
+              <div className="card-header">
+                <span className="card-num">Recruiter Concerns</span>
+              </div>
+
+              {atsReport.recruiterScan.concerns.length > 0 ||
+              atsReport.recruiterScan.juniorSignals.length > 0 ? (
+                <div className="ats-list">
+                  {[...atsReport.recruiterScan.concerns, ...atsReport.recruiterScan.juniorSignals].map(item => (
+                    <div key={item} className="ats-list-item medium">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="ats-empty">No major recruiter concerns detected.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <span className="card-num">Next Improvements</span>
+              </div>
+
+              <div className="ats-list">
+                {[...atsReport.suggestions, ...atsReport.recruiterScan.actions].map(item => (
+                  <div key={item} className="ats-list-item low">
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

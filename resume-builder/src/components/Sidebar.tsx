@@ -15,15 +15,16 @@ interface Props {
 }
 
 const items = [
-  { id: "basics", label: "Personal", icon: "👤" },
-  { id: "objective", label: "Summary", icon: "💡" },
-  { id: "experience", label: "Experience", icon: "💼" },
-  { id: "projects", label: "Projects", icon: "🚀" },
-  { id: "skills", label: "Skills", icon: "⚡" },
-  { id: "education", label: "Education", icon: "🎓" },
-  { id: "certifications", label: "Certificates", icon: "🏅" },
-  { id: "languages", label: "Languages", icon: "🌐" },
-  { id: "ats", label: "ATS Review", icon: "📈" }
+  { id: "basics", label: "Personal" },
+  { id: "targeting", label: "AI Targeting" },
+  { id: "objective", label: "Summary" },
+  { id: "experience", label: "Experience" },
+  { id: "projects", label: "Projects" },
+  { id: "skills", label: "Skills" },
+  { id: "education", label: "Education" },
+  { id: "certifications", label: "Certificates" },
+  { id: "languages", label: "Languages" },
+  { id: "ats", label: "ATS Review" }
 ]
 
 export default function Sidebar({
@@ -47,7 +48,7 @@ export default function Sidebar({
         Re<span>·</span>sume
       </div>
 
-      <div className="sidebar-tagline">ATS-Friendly Builder</div>
+      <div className="sidebar-tagline">AI Resume Optimization</div>
 
       <div className="nav-label">Resumes</div>
 
@@ -87,45 +88,39 @@ export default function Sidebar({
 
       <div className="nav-label">Editor</div>
 
-      <div className="nav-items-grid">
-        {items.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item ${tab === item.id ? "active" : ""}`}
-            onClick={() => setTab(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </div>
+      {items.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          className={`nav-item ${tab === item.id ? "active" : ""}`}
+          onClick={() => setTab(item.id)}
+        >
+          <span>{item.label}</span>
+        </button>
+      ))}
 
       <div className="sidebar-divider" />
 
       <div className="nav-label">Export</div>
 
-      <div className="sidebar-actions-grid">
-        <button type="button" className="export-btn secondary" onClick={onImportPdf}>
-          📄 Import Into Current
-        </button>
+      <button type="button" className="export-btn secondary" onClick={onImportPdf}>
+        Import Into Current
+      </button>
 
-        <button type="button" className="export-btn secondary" onClick={onImportPdfAsNew}>
-          🗂 Import As New
-        </button>
+      <button type="button" className="export-btn secondary" onClick={onImportPdfAsNew}>
+        Import As New
+      </button>
 
-        <button type="button" className="export-btn primary" onClick={onExportPdf}>
-          ⬇ Export / Print PDF
-        </button>
+      <button type="button" className="export-btn primary" onClick={onExportPdf}>
+        Print / Save ATS PDF
+      </button>
 
-        <button type="button" className="export-btn secondary" onClick={onCopyAts}>
-          📋 Copy ATS Text
-        </button>
-      </div>
+      <button type="button" className="export-btn secondary" onClick={onCopyAts}>
+        Copy ATS Text
+      </button>
 
       <p className="tip-text">
-        The editor auto-saves locally. Use the PDF button to open your browser print dialog and save the
-        resume as a PDF.
+        The editor auto-saves locally. Use browser Save as PDF to preserve selectable ATS-readable text.
       </p>
     </aside>
   )

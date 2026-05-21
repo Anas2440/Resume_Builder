@@ -7,7 +7,8 @@ import {
   initialExperience,
   initialProjects,
   initialEducation,
-  initialCertifications
+  initialCertifications,
+  initialTargeting
 } from "./data/initialData"
 import {
   type Basics,
@@ -15,10 +16,17 @@ import {
   type Project,
   type Education,
   type Certification,
-  type ResumeState
+  type ResumeState,
+  type ResumeTargeting
 } from "./types/resume"
 import { analyzeAts } from "./utils/ats"
 import { importResumeFromPdf } from "./utils/importResume"
+import {
+  analyzeJobDescription,
+  generateTailoredSummary,
+  optimizeResumeForJob,
+  rewriteBulletForTarget
+} from "./utils/resumeAi"
 
 const LEGACY_STORAGE_KEY = "resume-builder-data-v2"
 const STORAGE_KEY = "resume-builder-data-v3"
@@ -37,49 +45,36 @@ interface ResumeWorkspace {
 
 type ImportMode = "replace-current" | "create-new"
 
+function normalizeResumeState(saved?: Partial<ResumeState>): ResumeState {
+  return {
+    basics: { ...initialBasics, ...saved?.basics },
+    experience: saved?.experience?.length ? saved.experience : initialExperience,
+    projects: saved?.projects?.length ? saved.projects : initialProjects,
+    education: saved?.education?.length ? saved.education : initialEducation,
+    certifications: saved?.certifications?.length ? saved.certifications : initialCertifications,
+    targeting: { ...initialTargeting, ...saved?.targeting }
+  }
+}
+
 function getInitialResumeState(): ResumeState {
   if (typeof window === "undefined") {
-    return {
-      basics: initialBasics,
-      experience: initialExperience,
-      projects: initialProjects,
-      education: initialEducation,
-      certifications: initialCertifications
-    }
+    return normalizeResumeState()
   }
 
   const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY)
 
   if (!raw) {
-    return {
-      basics: initialBasics,
-      experience: initialExperience,
-      projects: initialProjects,
-      education: initialEducation,
-      certifications: initialCertifications
-    }
+    return normalizeResumeState()
   }
 
   try {
     const saved = JSON.parse(raw) as Partial<ResumeState>
 
-    return {
-      basics: { ...initialBasics, ...saved.basics },
-      experience: saved.experience?.length ? saved.experience : initialExperience,
-      projects: saved.projects?.length ? saved.projects : initialProjects,
-      education: saved.education?.length ? saved.education : initialEducation,
-      certifications: saved.certifications?.length ? saved.certifications : initialCertifications
-    }
+    return normalizeResumeState(saved)
   } catch (error) {
     console.error("Failed to load saved resume data", error)
 
-    return {
-      basics: initialBasics,
-      experience: initialExperience,
-      projects: initialProjects,
-      education: initialEducation,
-      certifications: initialCertifications
-    }
+    return normalizeResumeState()
   }
 }
 
@@ -121,7 +116,18 @@ function getInitialWorkspace(): ResumeWorkspace {
     try {
       const saved = JSON.parse(workspaceRaw) as ResumeWorkspace
       if (saved.resumes?.length) {
-        return saved
+        const resumes = saved.resumes.map(item => ({
+          ...item,
+          data: normalizeResumeState(item.data)
+        }))
+        const activeResumeId = resumes.some(item => item.id === saved.activeResumeId)
+          ? saved.activeResumeId
+          : resumes[0].id
+
+        return {
+          activeResumeId,
+          resumes
+        }
       }
     } catch (error) {
       console.error("Failed to load saved resume workspace", error)
@@ -275,7 +281,8 @@ function createBlankResumeState(): ResumeState {
     experience: [{ company: "", role: "", location: "", start: "", end: "", bullets: [""] }],
     projects: [{ name: "", desc: "", skills: "" }],
     education: [{ degree: "", school: "", start: "", end: "" }],
-    certifications: [{ name: "", issuer: "", date: "" }]
+    certifications: [{ name: "", issuer: "", date: "" }],
+    targeting: { ...initialTargeting }
   }
 }
 
@@ -331,14 +338,17 @@ export default function App() {
   const [certifications, setCertifications] = useState<Certification[]>(
     initialActiveResume.data.certifications
   )
+  const [targeting, setTargeting] = useState<ResumeTargeting>(initialActiveResume.data.targeting)
   const [importMeta, setImportMeta] = useState<{ fileName: string; warnings: string[] } | null>(null)
+  const [optimizationNotes, setOptimizationNotes] = useState<string[]>([])
 
   const currentResumeState: ResumeState = {
     basics,
     experience,
     projects,
     education,
-    certifications
+    certifications,
+    targeting
   }
 
   const atsReport = analyzeAts(currentResumeState)
@@ -354,7 +364,8 @@ export default function App() {
       experience,
       projects,
       education,
-      certifications
+      certifications,
+      targeting
     }
 
     setWorkspace(prev => ({
@@ -370,18 +381,21 @@ export default function App() {
           : item
       )
     }))
-  }, [activeResumeId, basics, experience, projects, education, certifications])
+  }, [activeResumeId, basics, experience, projects, education, certifications, targeting])
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace))
   }, [workspace])
 
   const loadResumeIntoEditor = (resume: ResumeState) => {
-    setBasics(cloneResumeState(resume).basics)
-    setExperience(cloneResumeState(resume).experience)
-    setProjects(cloneResumeState(resume).projects)
-    setEducation(cloneResumeState(resume).education)
-    setCertifications(cloneResumeState(resume).certifications)
+    const normalized = normalizeResumeState(resume)
+
+    setBasics(cloneResumeState(normalized).basics)
+    setExperience(cloneResumeState(normalized).experience)
+    setProjects(cloneResumeState(normalized).projects)
+    setEducation(cloneResumeState(normalized).education)
+    setCertifications(cloneResumeState(normalized).certifications)
+    setTargeting(cloneResumeState(normalized).targeting)
   }
 
   const handleSelectResume = (resumeId: string) => {
@@ -394,6 +408,7 @@ export default function App() {
     setActiveResumeId(selected.id)
     loadResumeIntoEditor(selected.data)
     setImportMeta(null)
+    setOptimizationNotes([])
     setTab("basics")
   }
 
@@ -414,6 +429,7 @@ export default function App() {
     setActiveResumeId(newDocument.id)
     loadResumeIntoEditor(blankResume)
     setImportMeta(null)
+    setOptimizationNotes([])
     setTab("basics")
   }
 
@@ -443,6 +459,7 @@ export default function App() {
     setActiveResumeId(duplicate.id)
     loadResumeIntoEditor(duplicate.data)
     setImportMeta(null)
+    setOptimizationNotes([])
     setTab("basics")
   }
 
@@ -500,43 +517,18 @@ export default function App() {
     setActiveResumeId(nextActive.id)
     loadResumeIntoEditor(nextActive.data)
     setImportMeta(null)
+    setOptimizationNotes([])
     setTab("basics")
   }
 
   const handleExportPdf = () => {
-    const exportResume = async () => {
-      if (!previewRef.current) {
-        return
-      }
-
-      const { default: html2pdf } = await import("html2pdf.js")
-      const safeName = (basics.name || "resume")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: `${safeName || "resume"}.pdf`,
-          image: { type: "jpeg", quality: 1 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff"
-          },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: "portrait"
-          }
-        })
-        .from(previewRef.current)
-        .save()
-    }
-
-    void exportResume()
+    const originalTitle = document.title
+    const safeName = buildSuggestedResumeName(currentResumeState, { fallback: "ATS Resume" })
+    document.title = safeName
+    window.print()
+    window.setTimeout(() => {
+      document.title = originalTitle
+    }, 250)
   }
 
   const handleCopyAts = async () => {
@@ -578,7 +570,8 @@ export default function App() {
         certifications:
           imported.resume.certifications.length > 0
             ? imported.resume.certifications
-            : blankResume.certifications
+            : blankResume.certifications,
+        targeting
       }
 
       if (importModeRef.current === "create-new") {
@@ -607,6 +600,7 @@ export default function App() {
         fileName: file.name,
         warnings: imported.warnings
       })
+      setOptimizationNotes([])
       setTab("ats")
     } catch (error) {
       console.error("Failed to import resume PDF", error)
@@ -614,6 +608,47 @@ export default function App() {
     } finally {
       event.target.value = ""
     }
+  }
+
+  const handleOptimizeResume = () => {
+    const result = optimizeResumeForJob(currentResumeState, targeting)
+
+    setBasics(result.resume.basics)
+    setExperience(result.resume.experience)
+    setProjects(result.resume.projects)
+    setEducation(result.resume.education)
+    setCertifications(result.resume.certifications)
+    setTargeting(result.resume.targeting)
+    setOptimizationNotes([...result.changes, ...result.safeguards])
+    setTab("ats")
+  }
+
+  const handleGenerateSummary = () => {
+    const analysis = analyzeJobDescription(targeting.jobDescription, targeting.mode)
+    const objective = generateTailoredSummary(currentResumeState, analysis, targeting)
+
+    setBasics(prev => ({
+      ...prev,
+      objective
+    }))
+    setOptimizationNotes(["Generated a tailored professional summary from the selected mode and pasted job description."])
+    setTab("objective")
+  }
+
+  const handleRewriteAllBullets = () => {
+    const analysis = analyzeJobDescription(targeting.jobDescription, targeting.mode)
+
+    setExperience(prev =>
+      prev.map(item => ({
+        ...item,
+        bullets: item.bullets.map(bullet => rewriteBulletForTarget(bullet, analysis, targeting.mode))
+      }))
+    )
+    setOptimizationNotes([
+      "Rewrote experience bullets with stronger action verbs, technical scope, and truthful outcome language.",
+      "No new companies, fake metrics, or unlisted projects were added."
+    ])
+    setTab("experience")
   }
 
   return (
@@ -654,8 +689,14 @@ export default function App() {
         setEducation={setEducation}
         certifications={certifications}
         setCertifications={setCertifications}
+        targeting={targeting}
+        setTargeting={setTargeting}
         atsReport={atsReport}
         importMeta={importMeta}
+        optimizationNotes={optimizationNotes}
+        onOptimizeResume={handleOptimizeResume}
+        onGenerateSummary={handleGenerateSummary}
+        onRewriteAllBullets={handleRewriteAllBullets}
       />
 
       <Preview

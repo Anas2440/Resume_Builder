@@ -26,6 +26,16 @@ export interface Certification {
   date: string
 }
 
+export type ResumeModeId = "product-ios" | "startup-execution" | "enterprise-consulting"
+
+export interface ResumeTargeting {
+  jobDescription: string
+  mode: ResumeModeId
+  targetRole: string
+  companyType: string
+  lastOptimizedAt: string
+}
+
 export interface Basics {
   name: string
   phone: string
@@ -44,4 +54,5 @@ export interface ResumeState {
   projects: Project[]
   education: Education[]
   certifications: Certification[]
+  targeting: ResumeTargeting
 }

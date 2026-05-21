@@ -16,6 +16,9 @@ declare module "html2pdf.js" {
       format?: string | number[]
       orientation?: string
     }
+    pagebreak?: {
+      mode?: string[]
+    }
   }
 
   interface Html2PdfInstance {

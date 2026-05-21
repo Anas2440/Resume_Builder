@@ -3,7 +3,8 @@ import type {
   Experience,
   Project,
   Education,
-  Certification
+  Certification,
+  ResumeTargeting
 } from "../types/resume"
 
 export const initialBasics: Basics = {
@@ -14,10 +15,10 @@ export const initialBasics: Basics = {
   portfolio: "resji.com/anasparekh",
   location: "Ahmedabad, Gujarat, India",
   objective:
-    "Driven iOS developer committed to creating user-friendly and innovative mobile applications that harness technology to deliver impactful digital experiences. Focused on addressing real-world challenges while exploring the endless possibilities at the intersection of technology and creativity.",
+    "iOS developer with hands-on experience shipping production apps to the App Store and building reliable, user-focused mobile experiences with Swift. Comfortable collaborating with remote cross-functional teams to deliver API-driven, data-rich products with real-time and secure mobile features. Focused on creating thoughtful digital experiences that solve real user problems.",
   skills:
-    "Swift, Xcode, UIKit, CocoaPods, RESTful APIs & JSON Parsing, Firebase, Realtime Database, BLE (Bluetooth Low Energy), Model-View-Controller (MVC), Combine Framework, Test-Driven Development, Push Notifications, App Store Deployment, Socket Communication, In-App Purchases, Problem-Solving & Debugging, Agile Development, Communication & Collaboration, Product Thinking, Adaptability & Continuous Learning",
-  languages: "English - Advanced\nHindi - Fluent"
+    "Swift, Xcode, UIKit, SwiftUI, CocoaPods, RESTful APIs & JSON Parsing, Firebase, Realtime Database, BLE (Bluetooth Low Energy), Model-View-Controller (MVC), Combine Framework, async/await (familiar), GCD (familiar), Swift Concurrency (familiar), Test-Driven Development, Push Notifications, App Store Deployment, Socket Communication, In-App Purchases, Problem-Solving & Debugging, Agile Development, Communication & Collaboration, Product Thinking, Adaptability & Continuous Learning",
+  languages: "English - Advanced (B2+)\nHindi - Fluent"
 }
 
 export const initialExperience: Experience[] = [
@@ -30,8 +31,8 @@ export const initialExperience: Experience[] = [
     bullets: [
       "Worked on enterprise-level iOS applications using Swift and UIKit, focusing on scalable and high-performance mobile solutions.",
       "Integrated Polar SDK for real-time heart rate monitoring, enabling seamless BLE-based sensor connectivity within fitness workflows.",
-      "Implemented advanced BLE controls: device scanning, pairing, connection state handling, and live data streaming.",
-      "Developed production modules including real-time socket communication, subscription flows, and feature-based access control.",
+      "Implemented advanced BLE controls including device scanning, pairing, connection state handling, and live data streaming while coordinating responsive UI updates with background device workflows.",
+      "Developed production modules including real-time socket communication, subscription flows, and feature-based access control across API-driven mobile experiences.",
       "Integrated REST APIs and backend services to ensure smooth data synchronization and reliable app performance.",
       "Collaborated in Agile cycles with daily progress updates and weekly deliverable builds."
     ]
@@ -45,7 +46,7 @@ export const initialExperience: Experience[] = [
     bullets: [
       "Developed and launched 10+ iOS applications on the App Store, amassing 100,000+ total downloads.",
       "Leveraged UIKit and Combine to enhance UI performance, achieving a 30% boost in user engagement.",
-      "Integrated RESTful APIs with cross-functional teams, improving data retrieval speed by 25%.",
+      "Integrated RESTful APIs and asynchronous data flows across iOS features, improving data retrieval speed by 25%.",
       "Optimized codebase leading to 40% reduction in application load time.",
       "Conducted unit and UI testing ensuring seamless feature rollout; achieved 98% user satisfaction.",
       "Built reusable component libraries that streamlined future development by 50%.",
@@ -55,6 +56,11 @@ export const initialExperience: Experience[] = [
 ]
 
 export const initialProjects: Project[] = [
+  {
+    name: "CalmTrade",
+    desc: "Trading wellness application for day traders, combining biometric-supported wellness workflows with real-time, API-driven data and performance insights.",
+    skills: "Core Data · Polar SDK · SwiftUI · Swift · UIKit · REST APIs · Socket.IO · BLE"
+  },
   {
     name: "First Face",
     desc: "Full-featured mobile solution for fashion show teams, streamlining castings, fittings, look orders, and show timing.",
@@ -130,3 +136,11 @@ export const initialCertifications: Certification[] = [
     date: "May 2025"
   }
 ]
+
+export const initialTargeting: ResumeTargeting = {
+  jobDescription: "",
+  mode: "product-ios",
+  targetRole: "iOS Engineer",
+  companyType: "Product company or global startup",
+  lastOptimizedAt: ""
+}

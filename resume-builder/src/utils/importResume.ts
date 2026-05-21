@@ -74,7 +74,8 @@ export async function importResumeFromPdf(file: File, fallback: ResumeState): Pr
       experience: experience.length ? experience : fallback.experience,
       projects: projects.length ? projects : fallback.projects,
       education: education.length ? education : fallback.education,
-      certifications
+      certifications,
+      targeting: fallback.targeting
     }
   }
 }

@@ -45,25 +45,17 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
   return (
     <aside className="preview-panel">
       <div className="preview-topbar">
-        <div className="preview-dot r" />
-        <div className="preview-dot y" />
-        <div className="preview-dot g" />
-        <span className="preview-title">Live Preview</span>
+        <span className="preview-title">ATS Resume Preview</span>
       </div>
 
       <div className="preview-scroll">
         <div ref={ref} className="resume-paper">
           <div className="resume-header">
-            <div className="rh-name">{basics.name || "Your Name"}</div>
+            <h1 className="rh-name">{basics.name || "Your Name"}</h1>
 
             <div className="rh-contact">
               {contacts.length ? (
-                contacts.map(contact => (
-                  <span key={contact} className="rh-contact-item">
-                    <span className="rh-contact-dot" />
-                    {contact}
-                  </span>
-                ))
+                contacts.join(" | ")
               ) : (
                 <span className="rh-contact-item">Add contact details in the editor</span>
               )}
@@ -72,14 +64,15 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
           <div className="resume-body">
             {basics.objective && (
-              <div className="rs-objective">
-                <div className="rs-obj-text">{basics.objective}</div>
-              </div>
+              <section className="rs-section">
+                <h2 className="rs-section-title">Professional Summary</h2>
+                <p className="rs-obj-text">{basics.objective}</p>
+              </section>
             )}
 
             {experience.some(item => item.company || item.role) && (
               <section className="rs-section">
-                <div className="rs-section-title">Experience</div>
+                <h2 className="rs-section-title">Experience</h2>
 
                 {experience.map((item, index) => {
                   if (!item.company && !item.role) {
@@ -88,25 +81,23 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
                   return (
                     <div key={`${item.company}-${index}`} className="rs-exp-item">
-                      <div className="rs-exp-head">
-                        <span className="rs-exp-company">{item.company || item.role}</span>
-                        <span className="rs-exp-date">
-                          {[item.start, item.end].filter(Boolean).join(" - ")}
-                        </span>
+                      <h3 className="rs-exp-company">{item.company || item.role}</h3>
+                      <div className="rs-exp-meta">
+                        {[item.role, item.location, [item.start, item.end].filter(Boolean).join(" - ")]
+                          .filter(Boolean)
+                          .join(" | ")}
                       </div>
 
-                      <div className="rs-exp-role">
-                        {[item.role, item.location].filter(Boolean).join(" · ")}
-                      </div>
-
-                      {item.bullets
-                        .map(bullet => bullet.trim())
-                        .filter(Boolean)
-                        .map((bullet, bulletIndex) => (
-                          <div key={`${bullet}-${bulletIndex}`} className="rs-bullet">
-                            {bullet}
-                          </div>
-                        ))}
+                      <ul className="rs-bullet-list">
+                        {item.bullets
+                          .map(bullet => bullet.trim())
+                          .filter(Boolean)
+                          .map((bullet, bulletIndex) => (
+                            <li key={`${bullet}-${bulletIndex}`} className="rs-bullet">
+                              {bullet}
+                            </li>
+                          ))}
+                      </ul>
                     </div>
                   )
                 })}
@@ -115,7 +106,7 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
             {projects.some(item => item.name) && (
               <section className="rs-section">
-                <div className="rs-section-title">Projects &amp; Accomplishments</div>
+                <h2 className="rs-section-title">Projects</h2>
 
                 {projects.map((item, index) => {
                   if (!item.name) {
@@ -124,9 +115,9 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
                   return (
                     <div key={`${item.name}-${index}`} className="rs-proj-item">
-                      <div className="rs-proj-name">{item.name}</div>
-                      {item.desc && <div className="rs-proj-desc">{item.desc}</div>}
-                      {item.skills && <div className="rs-proj-skills">{item.skills}</div>}
+                      <h3 className="rs-proj-name">{item.name}</h3>
+                      {item.desc && <p className="rs-proj-desc">{item.desc}</p>}
+                      {item.skills && <p className="rs-proj-skills">Technologies: {item.skills}</p>}
                     </div>
                   )
                 })}
@@ -135,21 +126,14 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
             {skills.length > 0 && (
               <section className="rs-section">
-                <div className="rs-section-title">Technical Skills</div>
-
-                <div className="rs-skills-wrap">
-                  {skills.map(skill => (
-                    <span key={skill} className="rs-skill-tag">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+                <h2 className="rs-section-title">Technical Skills</h2>
+                <p className="rs-skills-text">{skills.join(", ")}</p>
               </section>
             )}
 
             {education.some(item => item.degree || item.school) && (
               <section className="rs-section">
-                <div className="rs-section-title">Education</div>
+                <h2 className="rs-section-title">Education</h2>
 
                 {education.map((item, index) => {
                   if (!item.degree && !item.school) {
@@ -158,14 +142,12 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
                   return (
                     <div key={`${item.degree}-${index}`} className="rs-edu-item">
-                      <div>
-                        <div className="rs-edu-deg">{item.degree}</div>
-                        <div className="rs-edu-school">{item.school}</div>
-                      </div>
-
-                      <div className="rs-edu-date">
-                        {[item.start, item.end].filter(Boolean).join(" - ")}
-                      </div>
+                      <h3 className="rs-edu-deg">{item.degree}</h3>
+                      <p className="rs-edu-school">
+                        {[item.school, [item.start, item.end].filter(Boolean).join(" - ")]
+                          .filter(Boolean)
+                          .join(" | ")}
+                      </p>
                     </div>
                   )
                 })}
@@ -174,7 +156,7 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
             {certifications.some(item => item.name) && (
               <section className="rs-section">
-                <div className="rs-section-title">Certifications</div>
+                <h2 className="rs-section-title">Certifications</h2>
 
                 {certifications.map((item, index) => {
                   if (!item.name) {
@@ -183,12 +165,10 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
                   return (
                     <div key={`${item.name}-${index}`} className="rs-cert-item">
-                      <div>
-                        <div className="rs-cert-name">{item.name}</div>
-                        <div className="rs-cert-sub">{item.issuer}</div>
-                      </div>
-
-                      <div className="rs-cert-date">{item.date}</div>
+                      <h3 className="rs-cert-name">{item.name}</h3>
+                      <p className="rs-cert-sub">
+                        {[item.issuer, item.date].filter(Boolean).join(" | ")}
+                      </p>
                     </div>
                   )
                 })}
@@ -197,15 +177,8 @@ const Preview = forwardRef<HTMLDivElement, Props>(function Preview(
 
             {languages.length > 0 && (
               <section className="rs-section">
-                <div className="rs-section-title">Languages</div>
-
-                <div className="rs-lang-wrap">
-                  {languages.map(language => (
-                    <span key={language} className="rs-lang-item">
-                      {language}
-                    </span>
-                  ))}
-                </div>
+                <h2 className="rs-section-title">Languages</h2>
+                <p className="rs-skills-text">{languages.join(", ")}</p>
               </section>
             )}
           </div>
