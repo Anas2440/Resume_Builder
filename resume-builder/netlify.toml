@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/optimize-resume"
+  to = "/.netlify/functions/optimize-resume"
+  status = 200

@@ -19,14 +19,9 @@ import {
   type ResumeState,
   type ResumeTargeting
 } from "./types/resume"
+import type { OptimizationStage, ResumeOptimizationResponse } from "./types/optimization"
 import { analyzeAts } from "./utils/ats"
 import { importResumeFromPdf } from "./utils/importResume"
-import {
-  analyzeJobDescription,
-  generateTailoredSummary,
-  optimizeResumeForJob,
-  rewriteBulletForTarget
-} from "./utils/resumeAi"
 
 const LEGACY_STORAGE_KEY = "resume-builder-data-v2"
 const STORAGE_KEY = "resume-builder-data-v3"
@@ -341,6 +336,9 @@ export default function App() {
   const [targeting, setTargeting] = useState<ResumeTargeting>(initialActiveResume.data.targeting)
   const [importMeta, setImportMeta] = useState<{ fileName: string; warnings: string[] } | null>(null)
   const [optimizationNotes, setOptimizationNotes] = useState<string[]>([])
+  const [optimizationStage, setOptimizationStage] = useState<OptimizationStage>("idle")
+  const [optimizationSuggestion, setOptimizationSuggestion] = useState<ResumeOptimizationResponse | null>(null)
+  const [optimizationError, setOptimizationError] = useState<string>("")
 
   const currentResumeState: ResumeState = {
     basics,
@@ -409,6 +407,8 @@ export default function App() {
     loadResumeIntoEditor(selected.data)
     setImportMeta(null)
     setOptimizationNotes([])
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
     setTab("basics")
   }
 
@@ -430,6 +430,8 @@ export default function App() {
     loadResumeIntoEditor(blankResume)
     setImportMeta(null)
     setOptimizationNotes([])
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
     setTab("basics")
   }
 
@@ -460,6 +462,8 @@ export default function App() {
     loadResumeIntoEditor(duplicate.data)
     setImportMeta(null)
     setOptimizationNotes([])
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
     setTab("basics")
   }
 
@@ -518,6 +522,8 @@ export default function App() {
     loadResumeIntoEditor(nextActive.data)
     setImportMeta(null)
     setOptimizationNotes([])
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
     setTab("basics")
   }
 
@@ -601,6 +607,8 @@ export default function App() {
         warnings: imported.warnings
       })
       setOptimizationNotes([])
+      setOptimizationSuggestion(null)
+      setOptimizationError("")
       setTab("ats")
     } catch (error) {
       console.error("Failed to import resume PDF", error)
@@ -610,45 +618,83 @@ export default function App() {
     }
   }
 
-  const handleOptimizeResume = () => {
-    const result = optimizeResumeForJob(currentResumeState, targeting)
+  const handleOptimizeResume = async () => {
+    if (!targeting.jobDescription.trim()) {
+      setOptimizationError("Paste a job description before running AI optimization.")
+      setTab("targeting")
+      return
+    }
 
-    setBasics(result.resume.basics)
-    setExperience(result.resume.experience)
-    setProjects(result.resume.projects)
-    setEducation(result.resume.education)
-    setCertifications(result.resume.certifications)
-    setTargeting(result.resume.targeting)
-    setOptimizationNotes([...result.changes, ...result.safeguards])
+    const stageTimers = [
+      window.setTimeout(() => setOptimizationStage("matching-resume"), 700),
+      window.setTimeout(() => setOptimizationStage("optimizing-content"), 1400)
+    ]
+
+    setOptimizationStage("analyzing-jd")
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
+    setOptimizationNotes(["Analyzing JD...", "Matching Resume...", "Optimizing Content..."])
+    setTab("targeting")
+
+    try {
+      const response = await fetch("/api/optimize-resume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          resume: currentResumeState,
+          targeting
+        })
+      })
+
+      const payload = (await response.json()) as ResumeOptimizationResponse | { error?: string }
+
+      if (!response.ok) {
+        throw new Error("error" in payload && payload.error ? payload.error : "Optimization request failed")
+      }
+
+      setOptimizationSuggestion(payload as ResumeOptimizationResponse)
+      setOptimizationNotes([
+        "AI suggested changes are ready for review.",
+        "No resume content has been changed yet."
+      ])
+    } catch (error) {
+      console.error("AI optimization failed", error)
+      setOptimizationError(error instanceof Error ? error.message : "AI optimization failed.")
+      setOptimizationNotes([])
+    } finally {
+      stageTimers.forEach(timer => window.clearTimeout(timer))
+      setOptimizationStage("idle")
+    }
+  }
+
+  const handleAcceptOptimization = () => {
+    if (!optimizationSuggestion) {
+      return
+    }
+
+    const nextResume = optimizationSuggestion.suggestedResume
+
+    setBasics(nextResume.basics)
+    setExperience(nextResume.experience)
+    setProjects(nextResume.projects)
+    setEducation(nextResume.education)
+    setCertifications(nextResume.certifications)
+    setTargeting(nextResume.targeting)
+    setOptimizationNotes([
+      `Accepted AI suggestions. Resume match score: ${optimizationSuggestion.matchScore}/100.`,
+      ...optimizationSuggestion.safeguards
+    ])
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
     setTab("ats")
   }
 
-  const handleGenerateSummary = () => {
-    const analysis = analyzeJobDescription(targeting.jobDescription, targeting.mode)
-    const objective = generateTailoredSummary(currentResumeState, analysis, targeting)
-
-    setBasics(prev => ({
-      ...prev,
-      objective
-    }))
-    setOptimizationNotes(["Generated a tailored professional summary from the selected mode and pasted job description."])
-    setTab("objective")
-  }
-
-  const handleRewriteAllBullets = () => {
-    const analysis = analyzeJobDescription(targeting.jobDescription, targeting.mode)
-
-    setExperience(prev =>
-      prev.map(item => ({
-        ...item,
-        bullets: item.bullets.map(bullet => rewriteBulletForTarget(bullet, analysis, targeting.mode))
-      }))
-    )
-    setOptimizationNotes([
-      "Rewrote experience bullets with stronger action verbs, technical scope, and truthful outcome language.",
-      "No new companies, fake metrics, or unlisted projects were added."
-    ])
-    setTab("experience")
+  const handleRejectOptimization = () => {
+    setOptimizationSuggestion(null)
+    setOptimizationError("")
+    setOptimizationNotes(["Rejected AI suggestions. Resume content was left unchanged."])
   }
 
   return (
@@ -694,9 +740,12 @@ export default function App() {
         atsReport={atsReport}
         importMeta={importMeta}
         optimizationNotes={optimizationNotes}
+        optimizationStage={optimizationStage}
+        optimizationSuggestion={optimizationSuggestion}
+        optimizationError={optimizationError}
         onOptimizeResume={handleOptimizeResume}
-        onGenerateSummary={handleGenerateSummary}
-        onRewriteAllBullets={handleRewriteAllBullets}
+        onAcceptOptimization={handleAcceptOptimization}
+        onRejectOptimization={handleRejectOptimization}
       />
 
       <Preview

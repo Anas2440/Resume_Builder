@@ -1,8 +1,6 @@
 import type {
-  Project,
   ResumeModeId,
-  ResumeState,
-  ResumeTargeting
+  ResumeState
 } from "../types/resume"
 
 export interface ResumeMode {
@@ -22,14 +20,6 @@ export interface JobDescriptionAnalysis {
   domainEmphasis: string[]
   roleTitle: string
   companySignals: string[]
-}
-
-export interface OptimizationResult {
-  resume: ResumeState
-  analysis: JobDescriptionAnalysis
-  changes: string[]
-  safeguards: string[]
-  keywordOpportunities: string[]
 }
 
 export interface RecruiterScan {
@@ -168,22 +158,6 @@ const domainSignals = [
   { pattern: /ai|machine learning|llm|assistant|automation/i, label: "AI-native product" },
   { pattern: /enterprise|consulting|client|service/i, label: "enterprise services" },
   { pattern: /ecommerce|marketplace|commerce/i, label: "marketplace and commerce" }
-]
-
-const strongActionVerbs = [
-  "Built",
-  "Delivered",
-  "Integrated",
-  "Implemented",
-  "Optimized",
-  "Developed",
-  "Collaborated",
-  "Launched",
-  "Improved",
-  "Designed",
-  "Debugged",
-  "Validated",
-  "Maintained"
 ]
 
 const weakBulletPattern = /^(worked on|responsible for|helped with|involved in|handled|did|made|used)\b/i
@@ -335,220 +309,6 @@ function inferYearsExperience(resume: ResumeState) {
   }
 
   return Math.max(0, new Date().getFullYear() - Math.min(...years))
-}
-
-function getPrimaryRole(resume: ResumeState, analysis: JobDescriptionAnalysis, targeting: ResumeTargeting) {
-  return (
-    targeting.targetRole.trim() ||
-    analysis.roleTitle.trim() ||
-    resume.experience.find(item => item.role.trim())?.role.trim() ||
-    "Software Engineer"
-  )
-}
-
-function getModePositioning(modeId: ResumeModeId) {
-  switch (modeId) {
-    case "startup-execution":
-      return "shipping reliable features quickly in ambiguous, cross-functional environments"
-    case "enterprise-consulting":
-      return "delivering maintainable, API-driven applications through disciplined SDLC practices"
-    default:
-      return "building scalable, product-focused mobile applications with strong app quality and user experience"
-  }
-}
-
-export function generateTailoredSummary(
-  resume: ResumeState,
-  analysis: JobDescriptionAnalysis,
-  targeting: ResumeTargeting
-) {
-  const years = inferYearsExperience(resume)
-  const knownSkills = extractKnownSkills(resume)
-  const matchedStack = uniqueValues([
-    ...analysis.technologies.filter(skill => knownSkills.some(known => hasTerm(known, skill))),
-    ...resumeModes[targeting.mode].keywords.filter(skill =>
-      knownSkills.some(known => hasTerm(known, skill) || hasTerm(skill, known))
-    )
-  ]).slice(0, 6)
-  const role = getPrimaryRole(resume, analysis, targeting)
-  const yearsPhrase = years >= 1 ? `${years}+ years of experience` : "hands-on experience"
-  const stackPhrase = matchedStack.length
-    ? ` across ${matchedStack.join(", ")}`
-    : " across mobile, API-driven, and production application workflows"
-
-  return `${role} with ${yearsPhrase} building production software${stackPhrase}. Strong focus on ${getModePositioning(targeting.mode)}, with experience translating product requirements into recruiter-readable, technically credible delivery outcomes.`
-}
-
-function makeSentence(value: string) {
-  const trimmed = value.trim().replace(/\s+/g, " ")
-
-  if (!trimmed) {
-    return ""
-  }
-
-  return trimmed.endsWith(".") ? trimmed : `${trimmed}.`
-}
-
-function removeWeakOpening(bullet: string) {
-  return bullet
-    .replace(/^[-•]\s*/, "")
-    .replace(weakBulletPattern, "")
-    .replace(/^\s*(on|with|for|to)\s+/i, "")
-    .trim()
-}
-
-function preserveMetricClause(bullet: string) {
-  return bullet.match(/\b(?:\d+[%+]?|[1-9]\d*x|[1-9]\d{2,}\+|100,000\+)[^.;]*/i)?.[0]?.trim() ?? ""
-}
-
-export function rewriteBulletForTarget(
-  bullet: string,
-  analysis: JobDescriptionAnalysis,
-  modeId: ResumeModeId
-) {
-  const cleaned = removeWeakOpening(bullet)
-
-  if (!cleaned) {
-    return bullet
-  }
-
-  const lower = cleaned.toLowerCase()
-  const metric = preserveMetricClause(bullet)
-  const suffix = metric && !hasTerm(cleaned, metric) ? `, preserving the reported impact of ${metric}` : ""
-  const modeQuality =
-    modeId === "enterprise-consulting"
-      ? "maintainability and reliable delivery"
-      : modeId === "startup-execution"
-        ? "rapid delivery and product iteration"
-        : "app quality, performance, and user experience"
-
-  if (/api|backend|json|graphql/.test(lower)) {
-    return makeSentence(`Integrated API-driven mobile workflows with asynchronous data handling to improve synchronization, reliability, and application responsiveness${suffix}`)
-  }
-
-  if (/ble|bluetooth|polar|sensor/.test(lower)) {
-    return makeSentence(`Implemented BLE-based device connectivity, pairing, connection-state handling, and live data flows for reliable realtime mobile experiences${suffix}`)
-  }
-
-  if (/socket|real[-\s]?time|live|sync/.test(lower)) {
-    return makeSentence(`Developed realtime communication features with dependable state updates and user-facing responsiveness across production iOS workflows${suffix}`)
-  }
-
-  if (/firebase|push|notification|database|firestore/.test(lower)) {
-    return makeSentence(`Built Firebase-backed mobile features supporting notifications, data persistence, and reliable product workflows${suffix}`)
-  }
-
-  if (/test|qa|quality|unit|ui testing/.test(lower)) {
-    return makeSentence(`Validated feature quality through testing and release checks to support stable delivery and reduce production regressions${suffix}`)
-  }
-
-  if (/optimi[sz]|performance|load|speed|responsive/.test(lower)) {
-    return makeSentence(`Optimized iOS application performance and code paths to improve responsiveness, load behavior, and user experience${suffix}`)
-  }
-
-  if (/collaborat|agile|scrum|daily|weekly|team/.test(lower)) {
-    return makeSentence(`Collaborated in Agile delivery cycles with cross-functional stakeholders to clarify scope, unblock delivery, and ship reliable builds${suffix}`)
-  }
-
-  if (/launch|app store|downloads|production/.test(lower)) {
-    return makeSentence(`Launched production iOS applications through App Store-ready delivery practices while maintaining ${modeQuality}${suffix}`)
-  }
-
-  if (weakBulletPattern.test(bullet) || cleaned.length < 70) {
-    const recruiterTerm = analysis.recruiterIntent[0] ?? modeQuality
-    return makeSentence(`Delivered ${cleaned} with emphasis on ${recruiterTerm}, ${modeQuality}, and technically credible execution${suffix}`)
-  }
-
-  const startsStrong = strongActionVerbs.some(verb => cleaned.startsWith(verb))
-  return startsStrong ? makeSentence(cleaned) : makeSentence(`Delivered ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`)
-}
-
-function strengthenProject(project: Project, analysis: JobDescriptionAnalysis, modeId: ResumeModeId) {
-  const projectText = [project.name, project.desc, project.skills].join(" ")
-  const matched = uniqueValues(
-    [...analysis.atsKeywords, ...resumeModes[modeId].keywords].filter(keyword =>
-      hasTerm(projectText, keyword)
-    )
-  ).slice(0, 4)
-
-  if (!project.desc.trim() || matched.length === 0) {
-    return project
-  }
-
-  const cleanDescription = project.desc.trim().replace(/\.$/, "")
-  const emphasis = matched.join(", ")
-
-  return {
-    ...project,
-    desc: `${cleanDescription}, with resume emphasis on ${emphasis} for closer role alignment.`
-  }
-}
-
-export function optimizeResumeForJob(
-  resume: ResumeState,
-  targeting: ResumeTargeting
-): OptimizationResult {
-  const analysis = analyzeJobDescription(targeting.jobDescription, targeting.mode)
-  const knownSkills = extractKnownSkills(resume)
-  const rankedSkills = knownSkills
-    .map((skill, index) => ({
-      skill,
-      index,
-      score:
-        (analysis.requiredSkills.some(keyword => hasTerm(skill, keyword) || hasTerm(keyword, skill)) ? 8 : 0) +
-        (analysis.atsKeywords.some(keyword => hasTerm(skill, keyword) || hasTerm(keyword, skill)) ? 4 : 0) +
-        (resumeModes[targeting.mode].keywords.some(keyword => hasTerm(skill, keyword) || hasTerm(keyword, skill)) ? 3 : 0)
-    }))
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .map(item => item.skill)
-  const optimizedSkills = uniqueValues(rankedSkills).join(", ")
-  const optimizedExperience = resume.experience.map(item => ({
-    ...item,
-    bullets: item.bullets.map(bullet => rewriteBulletForTarget(bullet, analysis, targeting.mode))
-  }))
-  const rankedProjects = resume.projects
-    .map((project, index) => ({
-      project: strengthenProject(project, analysis, targeting.mode),
-      index,
-      score: scoreTextAgainstKeywords(
-        [project.name, project.desc, project.skills].join(" "),
-        [...analysis.atsKeywords, ...resumeModes[targeting.mode].keywords]
-      )
-    }))
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .map(item => item.project)
-  const nextResume: ResumeState = {
-    ...resume,
-    basics: {
-      ...resume.basics,
-      objective: generateTailoredSummary(resume, analysis, targeting),
-      skills: optimizedSkills || resume.basics.skills
-    },
-    experience: optimizedExperience,
-    projects: rankedProjects,
-    targeting: {
-      ...targeting,
-      lastOptimizedAt: new Date().toISOString()
-    }
-  }
-  const missing = getKeywordMatches(resume, analysis.requiredSkills).missing
-
-  return {
-    resume: nextResume,
-    analysis,
-    changes: [
-      "Rewrote the professional summary around the selected role mode and pasted job description.",
-      "Reordered technical skills by JD overlap while keeping only skills already found in the resume.",
-      "Strengthened weak bullets using credible action verbs and technical context without adding fake metrics.",
-      "Reordered projects by keyword relevance and emphasized matching technologies already present in each project."
-    ],
-    safeguards: [
-      "No companies, employment history, education, certifications, or projects were invented.",
-      "Missing JD skills were reported as opportunities instead of being silently added.",
-      "Existing metrics were preserved; new numbers were not fabricated."
-    ],
-    keywordOpportunities: missing.map(skill => `Add ${skill} only if you can defend it from real work, projects, or training.`)
-  }
 }
 
 export function analyzeTechnicalCredibility(

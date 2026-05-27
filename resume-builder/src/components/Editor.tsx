@@ -7,6 +7,7 @@ import {
   type Certification,
   type ResumeTargeting
 } from "../types/resume"
+import type { OptimizationStage, ResumeOptimizationResponse } from "../types/optimization"
 import type { AtsReport } from "../utils/ats"
 import { resumeModes } from "../utils/resumeAi"
 
@@ -30,9 +31,12 @@ interface Props {
     warnings: string[]
   } | null
   optimizationNotes: string[]
+  optimizationStage: OptimizationStage
+  optimizationSuggestion: ResumeOptimizationResponse | null
+  optimizationError: string
   onOptimizeResume: () => void
-  onGenerateSummary: () => void
-  onRewriteAllBullets: () => void
+  onAcceptOptimization: () => void
+  onRejectOptimization: () => void
 }
 
 interface SectionMeta {
@@ -147,12 +151,22 @@ export default function Editor({
   atsReport,
   importMeta,
   optimizationNotes,
+  optimizationStage,
+  optimizationSuggestion,
+  optimizationError,
   onOptimizeResume,
-  onGenerateSummary,
-  onRewriteAllBullets
+  onAcceptOptimization,
+  onRejectOptimization
 }: Props) {
   const activeSection = sections.find(section => section.id === tab) ?? sections[0]
   const jobAnalysis = atsReport.jobAnalysis
+  const isOptimizing = optimizationStage !== "idle"
+  const progressSteps: Array<{ id: OptimizationStage; label: string }> = [
+    { id: "analyzing-jd", label: "Analyzing JD..." },
+    { id: "matching-resume", label: "Matching Resume..." },
+    { id: "optimizing-content", label: "Optimizing Content..." }
+  ]
+  const currentProgressIndex = progressSteps.findIndex(item => item.id === optimizationStage)
 
   const updateBasics = (field: keyof Basics, value: string) => {
     setBasics(prev => ({
@@ -334,18 +348,32 @@ export default function Editor({
           </div>
 
           <div className="optimizer-actions">
-            <button type="button" className="action-btn primary" onClick={onOptimizeResume}>
-              Optimize Resume For This JD
-            </button>
-
-            <button type="button" className="action-btn" onClick={onGenerateSummary}>
-              Generate Tailored Summary
-            </button>
-
-            <button type="button" className="action-btn" onClick={onRewriteAllBullets}>
-              Rewrite Experience Bullets
+            <button type="button" className="action-btn primary" onClick={onOptimizeResume} disabled={isOptimizing}>
+              {isOptimizing ? "Optimizing..." : "Optimize Resume For This JD"}
             </button>
           </div>
+
+          {isOptimizing && (
+            <div className="optimizer-progress">
+              {progressSteps.map(step => (
+                <div
+                  key={step.id}
+                  className={`progress-step ${
+                    progressSteps.findIndex(item => item.id === step.id) <= currentProgressIndex ? "active" : ""
+                  }`}
+                >
+                  <span />
+                  {step.label}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {optimizationError && (
+            <div className="ats-list-item high optimizer-error">
+              {optimizationError}
+            </div>
+          )}
 
           <div className="ats-callout">
             <div className="ats-callout-title">Ethical Optimization Guardrail</div>
@@ -367,6 +395,81 @@ export default function Editor({
                     {note}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {optimizationSuggestion && (
+            <div className="optimization-review">
+              <div className="review-summary">
+                <div className="ats-metric-card">
+                  <div className="ats-metric-label">Resume Match Score</div>
+                  <div className="ats-metric-value">
+                    {optimizationSuggestion.matchScore}<span>/100</span>
+                  </div>
+                </div>
+
+                <InsightList
+                  title="Missing Skills"
+                  items={optimizationSuggestion.missingSkills.slice(0, 10)}
+                  empty="No major missing skills detected."
+                />
+
+                <InsightList
+                  title="Suggested Improvements"
+                  items={optimizationSuggestion.suggestedImprovements.slice(0, 8)}
+                  empty="No additional improvements suggested."
+                />
+              </div>
+
+              <div className="review-columns">
+                <div className="card review-panel">
+                  <div className="card-header">
+                    <span className="card-num">Original Resume</span>
+                  </div>
+
+                  <div className="review-list">
+                    {optimizationSuggestion.changes.length > 0 ? (
+                      optimizationSuggestion.changes.map((change, index) => (
+                        <div key={`original-${index}-${change.original}`} className="review-item">
+                          <strong>{change.role || change.company || `Experience ${change.experienceIndex + 1}`}</strong>
+                          <span>{change.original}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="ats-empty">The AI did not find weak bullets that needed rewriting.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="card review-panel">
+                  <div className="card-header">
+                    <span className="card-num">AI Suggested Changes</span>
+                  </div>
+
+                  <div className="review-list">
+                    {optimizationSuggestion.changes.length > 0 ? (
+                      optimizationSuggestion.changes.map((change, index) => (
+                        <div key={`suggested-${index}-${change.original}`} className="review-item">
+                          <strong>{change.action === "remove" ? "Remove duplicate or weak bullet" : change.reason}</strong>
+                          <span>{change.suggested || "Remove this bullet."}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="ats-empty">No content changes are required.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="review-actions">
+                <button type="button" className="action-btn primary" onClick={onAcceptOptimization}>
+                  Accept
+                </button>
+
+                <button type="button" className="action-btn" onClick={onRejectOptimization}>
+                  Reject
+                </button>
               </div>
             </div>
           )}
