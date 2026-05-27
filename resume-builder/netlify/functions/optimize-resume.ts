@@ -1,5 +1,5 @@
 import type { ResumeState, ResumeTargeting } from "../../src/types/resume"
-import { optimizeResumeWithOpenRouter } from "../../services/aiService"
+import { optimizeResumeWithGemini } from "../../services/geminiService"
 
 export default async function handler(request: Request) {
   if (request.method !== "POST") {
@@ -16,7 +16,7 @@ export default async function handler(request: Request) {
       return Response.json({ error: "Missing resume or targeting payload" }, { status: 400 })
     }
 
-    const result = await optimizeResumeWithOpenRouter(body.resume, body.targeting)
+    const result = await optimizeResumeWithGemini(body.resume, body.targeting)
 
     return Response.json(result)
   } catch (error) {

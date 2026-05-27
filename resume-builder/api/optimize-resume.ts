@@ -1,5 +1,5 @@
 import type { ResumeState, ResumeTargeting } from "../src/types/resume"
-import { optimizeResumeWithOpenRouter } from "../services/aiService"
+import { optimizeResumeWithGemini } from "../services/geminiService"
 
 interface ApiRequest extends AsyncIterable<Buffer> {
   method?: string
@@ -51,7 +51,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return
     }
 
-    const result = await optimizeResumeWithOpenRouter(body.resume, body.targeting)
+    const result = await optimizeResumeWithGemini(body.resume, body.targeting)
 
     res.status(200).json(result)
   } catch (error) {
